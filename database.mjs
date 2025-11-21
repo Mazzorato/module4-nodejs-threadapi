@@ -7,7 +7,8 @@ import bcrypt from "bcrypt";
  */
 export async function loadSequelize() {
     try {
-
+            // --Connexion au serveur mysql--
+            // Connexion à la BDD
         const login = {
             database: "app-database",
             username: "root",
@@ -57,27 +58,23 @@ export async function loadSequelize() {
         User.hasMany(Comment);
         Comment.belongsTo(User);
 
-        // Création des tables
+        // Création des tables avant la fonction "sync" !
 
         await sequelize.sync ({ force: true});
         console.log("Connexion à la BDD effectuée");
 
         //Init fixtures data
         const userTest = await User.create ({
-            username: "Billy",
-            email: "billy@mail.com",
-            password: "1234"
+            username: "Alex",
+            email: "Alex@mail.com",
+            password: "threadapi"
         });
         
 
-
-
-
-
-
-
-        await sequelize.sync({ force: true });
-        console.log("Connexion effectuée");
+            // -- Création des post --
+        await userTest.createPost({ title : "Cloturer thread api", content: "Création des user" });
+        await userTest.createPost ({ title : "Pouvoir créer des post", content: "Création des post"});
+        await userTest.createPost ({ title: "Etre en mesure de commenter", content: "Création des comment"});
 
         return sequelize;
     } catch (error) {
