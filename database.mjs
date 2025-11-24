@@ -22,7 +22,12 @@ export async function loadSequelize() {
         //Créations des tables via models:
         const User = sequelize.define("User", {
             username: DataTypes.STRING,
-            email: DataTypes.STRING,
+            email: {
+                type: DataTypes.STRING,
+                set(value) {
+                    this.setDataValue("email", value.trim().toLowerCase());
+                }
+            },
             password: {
                 type: DataTypes.STRING,
                 // Hook pour chiffrer le mot de passe avant de le sauvegarder
@@ -66,7 +71,7 @@ export async function loadSequelize() {
         //Init fixtures data
         const userTest = await User.create ({
             username: "Alex",
-            email: "Alex@mail.com",
+            email: "alex@mail.com",
             password: "threadapi"
         });
         
@@ -75,6 +80,12 @@ export async function loadSequelize() {
         await userTest.createPost({ title : "Cloturer thread api", content: "Création des user" });
         await userTest.createPost ({ title : "Pouvoir créer des post", content: "Création des post"});
         await userTest.createPost ({ title: "Etre en mesure de commenter", content: "Création des comment"});
+
+         //-- Création des comments -- 
+        await userTest.createComment ({title: "Il faut cloturer l'api", content: "premier commentaire" });
+        await userTest.createComment ({title: "les routes fonctionnent actuellement", content: "deuxieme commentaire" });
+        await userTest.createComment ({title: "les commentaires sont affichés", content: "troisieme commentaire" });
+
 
         return sequelize;
     } catch (error) {

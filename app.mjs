@@ -42,7 +42,10 @@ async function main() {
         //Middleware
         app.use(express.json());
         app.use(cookieParser());
-        app.use(cors);
+        app.use(cors({
+            origin: "http://localhost:3000",
+            credentials: true
+        }));
 
         //Route d'inscription
         app.post("/register", async (req, res) => {
@@ -85,35 +88,27 @@ async function main() {
 
         // Route de connexion 
         app.post("/login", async (req, res) => {
-            // Connecte un utlisateur
             try {
+                const { email, password } = req.body;
 
-                const { email, password } = request.body;
-                const user = await User.findOne({ where: { email } });
-                
-                if (!user) {
-                    return response.status(401).json({ error: "Email ou mot de passe incorrect" });
+                const emailNorm = email.trim().toLowerCase();
+                const user = await User.findOne({ where: { email: emailNorm } });
+
+                if (!user || !bcrypt.compareSync(password, user.password)) {
+                    return res.status(401).json({ error: "Email ou mot de passe incorrect" });
                 }
-                if (!bcrypt.compareSync(password, user.password)) {
-                    return response.status(401).json({ error: "Email ou de passe incorrect" });
-                }
-                
-                // Génére un token JWT lors de la connexion
-                const token = jwt.sign(
-                    { userId: user.id },
-                    JWT_SECRET,
-                    { expiresIn: '1h' }
-                );
-                
-                // Envoie le token dans un cookie HttpOnly
+
+                const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "1h" });
+
                 res.cookie("token", token, { httpOnly: true });
                 res.json({ message: "Connexion réussie" });
             } catch (error) {
                 console.log(error);
-                res.status(500).json ({ error: "Erreur serveur"});                
+                res.status(500).json({ error: "Erreur serveur" });
             }
-
         });
+
+
 
         app.use(isLoggedInJWT(User, JWT_SECRET));
 
@@ -180,35 +175,46 @@ async function main() {
 
         app.delete("/posts/:postId", async (req, res) => {
             try {
-                console.log(req.params);
-                const postId = req.params.postId;
-                const comments = await Comment.destroy({
-                    where: {
-                        PostId: postId,
-                    }
-                });
-                res.json(comments);
+                const postId = Number(req.params.postId);
+                if (!postId) {
+                    return res.status(400).json({ error: "PostId invalide" });
+                }
+
+                await Comment.destroy({ where: { PostId: postId } });
+                const deletedPostCount = await Post.destroy({ where: { id: postId } });
+
+                if (deletedPostCount === 0) {
+                    return res.status(404).json({ message: "Post introuvable" });
+                }
+
+                res.json({ message: "Post et ses commentaires supprimés", deletedPostCount });
             } catch (error) {
                 console.log(error);
-                res.status(500).json({ error: "Erreur lors de la suppresion du post" });
+                res.status(500).json({ error: "Erreur lors de la suppression du post" });
             }
         });
 
+
         app.delete("/comment/:commentId", async (req, res) => {
             try {
-                console.log(req.params);
-                const commentId = req.params.commentId;
-                const comments = await Comment.destroy({
-                    where: {
-                        CommentId: commentId,
-                    }
-                });
-                res.json(comments);
+                const commentId = Number(req.params.commentId);
+                if (!commentId) {
+                    return res.status(400).json({ error: "CommentId invalide" });
+                }
+
+                const deletedCount = await Comment.destroy({ where: { id: commentId } });
+
+                if (deletedCount === 0) {
+                    return res.status(404).json({ message: "Commentaire introuvable" });
+                }
+
+                res.json({ message: "Commentaire supprimé", deletedCount });
             } catch (error) {
                 console.log(error);
                 res.status(500).json({ error: "Erreur de la suppression du commentaire" });
             }
         });
+
 
         app.get("/user/:userId/posts", async (req, res) => {
             try {
@@ -264,22 +270,25 @@ async function main() {
 
         app.get("/comment/:id", async (req, res) => {
             try {
-                const id = req.params.id;
-                const comment = await comment.findByPk(id);
-                
-                const NewComment = await Comment.create({
-                    content: "Je commente",
-                    
-                })
-                
-                res.json(NewComment);
-                
+                const id = Number(req.params.id);
+                if (!id) {
+                    return res.status(400).json({ error: "CommentId invalide" });
+                }
+
+                const comment = await Comment.findByPk(id);
+
+                if (!comment) {
+                    return res.status(404).json({ message: "Commentaire introuvable" });
+                }
+
+                res.json(comment);
+
             } catch (error) {
                 console.log(error);
-                res.status(500).json({message:"Internal server error"});
-                
+                res.status(500).json({ message: "Internal server error" });
             }
-        })
+        });
+
 
 
 
